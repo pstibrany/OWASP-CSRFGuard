@@ -231,6 +231,10 @@ public final class JavaScriptServlet extends HttpServlet {
 		InputStream is = null;
 
 		try {
+			if (!sourceFile.startsWith("/")) {
+				sourceFile = "/" + sourceFile;
+			}
+			
 			is = servletContext.getResourceAsStream(sourceFile);
 			if (is == null) {
 				throw new IllegalArgumentException("Unknown source-file: " + sourceFile);
