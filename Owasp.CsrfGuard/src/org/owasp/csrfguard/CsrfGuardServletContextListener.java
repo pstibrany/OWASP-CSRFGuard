@@ -63,7 +63,12 @@ public class CsrfGuardServletContextListener implements ServletContextListener {
 
 		/** try web context **/
 		if (is == null) {
-			is = context.getResourceAsStream(resourceName);
+			String res = resourceName;
+			if (!res.startsWith("/")) {
+				res = "/" + res;
+			}
+			
+			is = context.getResourceAsStream(res);
 		}
 
 		/** try current directory **/
