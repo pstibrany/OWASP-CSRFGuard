@@ -238,6 +238,9 @@ public final class JavaScriptServlet extends HttpServlet {
 			
 			int i = 0;
 			while ((i = is.read()) > 0) {
+				if (i > 127) {
+					throw new IllegalArgumentException("Invalid character in source-file: " + sourceFile + ", character value: " + i);
+				}
 				sb.append((char) i);
 			}
 		} catch (IOException ioe) {
