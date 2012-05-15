@@ -41,7 +41,7 @@ public final class Streams {
 		throw new CloneNotSupportedException();
 	}
 
-	public static void close(InputStream is) {
+	public static void close(Closeable is) {
 		if (is != null) {
 			try {
 				is.close();
@@ -50,15 +50,4 @@ public final class Streams {
 			}
 		}
 	}
-
-	public static void close(OutputStream os) {
-		if (os != null) {
-			try {
-				os.close();
-			} catch (IOException ioe) {
-				throw new RuntimeException(ioe);
-			}
-		}
-	}
-	
 }
