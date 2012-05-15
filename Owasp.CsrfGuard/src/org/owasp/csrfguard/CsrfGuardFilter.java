@@ -28,13 +28,19 @@
  */
 package org.owasp.csrfguard;
 
-import java.io.*;
+import java.io.IOException;
 
-import javax.servlet.*;
-import javax.servlet.http.*;
+import javax.servlet.Filter;
+import javax.servlet.FilterChain;
+import javax.servlet.FilterConfig;
+import javax.servlet.ServletException;
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletResponse;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
 
 import org.owasp.csrfguard.http.InterceptRedirectResponse;
-//import org.owasp.csrfguard.http.MultipartHttpServletRequest;
 
 public final class CsrfGuardFilter implements Filter {
 
@@ -50,7 +56,13 @@ public final class CsrfGuardFilter implements Filter {
 		/** only work with HttpServletRequest objects **/
 		if (request instanceof HttpServletRequest && response instanceof HttpServletResponse) {
 			HttpServletRequest httpRequest = (HttpServletRequest) request;
-			HttpSession session = httpRequest.getSession(true);
+			HttpSession session = httpRequest.getSession(false);
+			
+			if (session == null) {
+				// If there is no session, no harm can be done
+				filterChain.doFilter(httpRequest, (HttpServletResponse) response);
+				return;
+			}
 
 			CsrfGuard csrfGuard = CsrfGuard.getInstance();
 			csrfGuard.getLogger().log(String.format("CsrfGuard analyzing request %s", httpRequest.getRequestURI()));
