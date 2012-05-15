@@ -63,12 +63,7 @@ public class CsrfGuardServletContextListener implements ServletContextListener {
 
 		/** try web context **/
 		if (is == null) {
-			String fileName = context.getRealPath(resourceName);
-			File file = new File(fileName);
-
-			if (file.exists()) {
-				is = new FileInputStream(fileName);
-			}
+			is = context.getResourceAsStream(resourceName);
 		}
 
 		/** try current directory **/

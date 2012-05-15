@@ -28,14 +28,25 @@
  */
 package org.owasp.csrfguard.servlet;
 
-import java.io.*;
-import java.util.*;
-import java.util.regex.*;
-import javax.servlet.*;
-import javax.servlet.http.*;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.regex.Pattern;
 
-import org.owasp.csrfguard.*;
-import org.owasp.csrfguard.util.*;
+import javax.servlet.ServletConfig;
+import javax.servlet.ServletContext;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
+
+import org.owasp.csrfguard.CsrfGuard;
+import org.owasp.csrfguard.util.Streams;
+import org.owasp.csrfguard.util.Strings;
+import org.owasp.csrfguard.util.Writers;
 
 public final class JavaScriptServlet extends HttpServlet {
 
@@ -88,7 +99,7 @@ public final class JavaScriptServlet extends HttpServlet {
 		injectIntoForms = getInitParameter(servletConfig, "inject-into-forms", "true");
 		injectIntoAttributes = getInitParameter(servletConfig, "inject-into-attributes", "true");
 		xRequestedWith = getInitParameter(servletConfig, "x-requested-with", "OWASP CSRFGuard Project");
-		templateCode = readFileContent(servletConfig.getServletContext().getRealPath(sourceFile));
+		templateCode = readFileContent(servletConfig.getServletContext(), sourceFile);
 	}
 
 	@Override
@@ -215,14 +226,17 @@ public final class JavaScriptServlet extends HttpServlet {
 		return value;
 	}
 
-	private String readFileContent(String fileName) {
+	private String readFileContent(ServletContext servletContext, String sourceFile) {
 		StringBuilder sb = new StringBuilder();
 		InputStream is = null;
 
 		try {
-			is = new FileInputStream(fileName);
+			is = servletContext.getResourceAsStream(sourceFile);
+			if (is == null) {
+				throw new IllegalArgumentException("Unknown source-file: " + sourceFile);
+			}
+			
 			int i = 0;
-
 			while ((i = is.read()) > 0) {
 				sb.append((char) i);
 			}
