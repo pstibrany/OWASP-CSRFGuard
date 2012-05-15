@@ -29,6 +29,8 @@
 package org.owasp.csrfguard;
 
 import java.io.*;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.security.*;
 import java.util.*;
 
@@ -335,11 +337,11 @@ public final class CsrfGuard {
 				Map<String, String> pageTokens = (Map<String, String>) session.getAttribute(CsrfGuard.PAGE_TOKENS_KEY);
 
 				if (pageTokens != null) {
+					String uriPath = getUriPath(uri);
 					if (isTokenPerPagePrecreate()) {
-						createPageToken(pageTokens,uri);
+						createPageToken(pageTokens,uriPath);
 					}
-					tokenValue = pageTokens.get(uri);
-					
+					tokenValue = pageTokens.get(uriPath);
 				}
 			}
 
@@ -349,6 +351,21 @@ public final class CsrfGuard {
 		}
 
 		return tokenValue;
+	}
+	
+	private String getUriPath(String uri) {
+		if (uri == null) {
+			return null;
+		}
+		
+		URI uriObj = null;
+		try {
+			uriObj = new URI(uri);
+		} catch (URISyntaxException ex) {
+			return null;
+		}
+		
+		return uriObj.getPath();
 	}
 
 	public boolean isValidRequest(HttpServletRequest request, HttpServletResponse response) {
