@@ -1,6 +1,8 @@
 package org.owasp.csrfguard.http;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -25,33 +27,51 @@ public class InterceptRedirectResponse extends HttpServletResponseWrapper {
 
 	@Override
 	public void sendRedirect(String location) throws IOException {
+		URI uri = null;
+		try {
+			uri = new URI(location);
+		} catch (URISyntaxException e) {
+			response.sendRedirect(location);
+			return;
+		}
+		
+		String path = uri.getPath();
+		if (path == null) {
+			response.sendRedirect(location);
+			return;
+		}
+		
 		/** ensure token included in redirects **/
-		if (!location.contains("://") && (csrfGuard.isProtectedPage(location) || csrfGuard.isUnprotectedMethod("GET"))) {
+		if ((csrfGuard.isProtectedPage(path) || csrfGuard.isUnprotectedMethod("GET"))) {
+			// Make sure that there is a session
+			request.getSession(true);
+			
 			/** update tokens **/
 			csrfGuard.updateTokens(request);
 			
-			StringBuilder sb = new StringBuilder();
-
-			if (!location.startsWith("/")) {
-				sb.append(request.getContextPath() + "/" + location);
-			} else {
-				sb.append(location);
-			}
-			
-			if (location.contains("?")) {
-				sb.append('&');
-			} else {
-				sb.append('?');
+			if (!path.startsWith("/")) {
+				path = request.getContextPath() + "/" + path;
 			}
 
-			// remove any query parameters from the location
-			String locationUri = location.split("\\?", 2)[0];
-
-			sb.append(csrfGuard.getTokenName());
-			sb.append('=');
-			sb.append(csrfGuard.getTokenValue(request, locationUri));
+			StringBuilder q = new StringBuilder();
+			q.append(csrfGuard.getTokenName());
+			q.append('=');
+			q.append(csrfGuard.getTokenValue(request, path));
 			
-			response.sendRedirect(sb.toString());
+			if (uri.getQuery() != null) {
+				q.append("&");
+				q.append(uri.getQuery());
+			}
+			
+			URI targetURI = null;
+			try {
+				targetURI = new URI(uri.getScheme(), uri.getUserInfo(), uri.getHost(), uri.getPort(), path, q.toString(), null);
+			} catch (URISyntaxException e) {
+				response.sendRedirect(location);
+				return;
+			}
+			
+			response.sendRedirect(targetURI.toASCIIString());
 		} else {
 			response.sendRedirect(location);
 		}
