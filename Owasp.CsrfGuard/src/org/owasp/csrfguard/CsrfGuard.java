@@ -168,27 +168,15 @@ public final class CsrfGuard {
 			String key = (String) obj;
 			
 			if (key.startsWith(PROTECTED_PAGE_PREFIX)) {
-				String directive = key.substring(PROTECTED_PAGE_PREFIX.length());
-				int index = directive.indexOf('.');
-
 				/** page name/class **/
-				if (index < 0) {
-					String pageUri = properties.getProperty(key);
-					
-					csrfGuard.getProtectedPages().add(pageUri);
-				}
+				String pageUri = properties.getProperty(key);
+				csrfGuard.getProtectedPages().add(pageUri);
 			}
 
 			if (key.startsWith(UNPROTECTED_PAGE_PREFIX)) {
-				String directive = key.substring(UNPROTECTED_PAGE_PREFIX.length());
-				int index = directive.indexOf('.');
-
 				/** page name/class **/
-				if (index < 0) {
-					String pageUri = properties.getProperty(key);
-					
-					csrfGuard.getUnprotectedPages().add(pageUri);
-				}
+				String pageUri = properties.getProperty(key);
+				csrfGuard.getUnprotectedPages().add(pageUri);
 			}
 		}
 
