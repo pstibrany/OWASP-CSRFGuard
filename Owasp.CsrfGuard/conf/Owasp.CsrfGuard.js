@@ -318,11 +318,7 @@
 	/** inject csrf prevention tokens throughout dom **/
 	function injectTokens(tokenName, tokenValue) {
 		/** obtain reference to page tokens if enabled **/
-		var pageTokens = {};
-		
-		if(%TOKENS_PER_PAGE% == true) {
-			pageTokens = requestPageTokens();
-		}
+		var pageTokens = %PAGE_TOKENS%;
 		
 		/** iterate over all elements and injection token **/
 		var all = document.all ? document.all : document.getElementsByTagName('*');
@@ -345,43 +341,6 @@
 		}
 	}
 
-	/** obtain array of page specific tokens **/
-	function requestPageTokens() {
-		var xhr = window.XMLHttpRequest ? new window.XMLHttpRequest : new window.ActiveXObject("Microsoft.XMLHTTP");
-		var pageTokens = {};
-		
-		xhr.open("POST", "%SERVLET_PATH%", false);
-		xhr.send(null);
-		
-		var text = xhr.responseText;
-		var name = "";
-		var value = "";
-		var nameContext = true;
-		
-		for(var i=0; i<text.length; i++) {
-			var character = text.charAt(i);
-			
-			if(character == ':') {
-				nameContext = false;
-			} else if(character != ',') {
-				if(nameContext == true) {
-					name += character;
-				} else {
-					value += character;
-				}
-			}
-			
-			if(character == ',' || (i + 1) >= text.length) {
-				pageTokens[name] = value;
-				name = "";
-				value = "";
-				nameContext = true;
-			}
-		}
-		
-		return pageTokens;
-	}
-	
 	/**
 	 * Only inject the tokens if the JavaScript was referenced from HTML that
 	 * was served by us. Otherwise, the code was referenced from malicious HTML

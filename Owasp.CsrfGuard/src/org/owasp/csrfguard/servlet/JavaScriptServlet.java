@@ -28,25 +28,16 @@
  */
 package org.owasp.csrfguard.servlet;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.PrintWriter;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.regex.Pattern;
+import java.io.*;
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.regex.*;
 
-import javax.servlet.ServletConfig;
-import javax.servlet.ServletContext;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
+import javax.servlet.*;
+import javax.servlet.http.*;
 
-import org.owasp.csrfguard.CsrfGuard;
-import org.owasp.csrfguard.util.Streams;
-import org.owasp.csrfguard.util.Strings;
-import org.owasp.csrfguard.util.Writers;
+import org.owasp.csrfguard.*;
+import org.owasp.csrfguard.util.*;
 
 public final class JavaScriptServlet extends HttpServlet {
 
@@ -72,7 +63,7 @@ public final class JavaScriptServlet extends HttpServlet {
 	
 	private static final String X_REQUESTED_WITH_IDENTIFIER = "%X_REQUESTED_WITH%";
 	
-	private static final String TOKENS_PER_PAGE_IDENTIFIER = "%TOKENS_PER_PAGE%";
+	private static final String PAGE_TOKENS_IDENTIFIER = "%PAGE_TOKENS%";
 	
 	private String templateCode = null;
 	
@@ -173,12 +164,16 @@ public final class JavaScriptServlet extends HttpServlet {
 		code = code.replaceAll(INJECT_INTO_FORMS_IDENTIFIER, injectIntoForms);
 		code = code.replaceAll(INJECT_INTO_ATTRIBUTES_IDENTIFIER, injectIntoAttributes);
 		code = code.replaceAll(INJECT_INTO_XHR_IDENTIFIER, String.valueOf(csrfGuard.isAjaxEnabled()));
-		code = code.replaceAll(TOKENS_PER_PAGE_IDENTIFIER, String.valueOf(csrfGuard.isTokenPerPageEnabled()));
 		code = code.replaceAll(DOMAIN_ORIGIN_IDENTIFIER, parseDomain(request.getRequestURL()));
 		code = code.replaceAll(DOMAIN_STRICT_IDENTIFIER, domainStrict);
 		code = code.replaceAll(CONTEXT_PATH_IDENTIFIER, request.getContextPath());
 		code = code.replaceAll(SERVLET_PATH_IDENTIFIER, request.getContextPath() + request.getServletPath());
 		code = code.replaceAll(X_REQUESTED_WITH_IDENTIFIER, xRequestedWith);
+		if (!csrfGuard.isTokenPerPageEnabled()) {
+			code = code.replaceAll(PAGE_TOKENS_IDENTIFIER, "{}");
+		} else {
+			code = code.replaceAll(PAGE_TOKENS_IDENTIFIER, getPageTokensJSObject(request));
+		}
 
 		/** write dynamic javascript **/
 		OutputStream output = null;
@@ -194,6 +189,62 @@ public final class JavaScriptServlet extends HttpServlet {
 			Writers.close(writer);
 			Streams.close(output);
 		}
+	}
+
+	private String getPageTokensJSObject(HttpServletRequest request) {
+		HttpSession session = request.getSession(true);
+		@SuppressWarnings("unchecked")
+		Map<String, String> pageTokens = (Map<String, String>) session.getAttribute(CsrfGuard.PAGE_TOKENS_KEY);
+		if (pageTokens == null) {
+			return "{}";
+		}
+		
+		StringBuilder sb = new StringBuilder();
+		sb.append("{");
+		
+		String delim = "";
+		for (Entry<String, String> e: pageTokens.entrySet()) {
+			sb.append(delim);
+			sb.append("\"");
+			sb.append(encodeJavascriptString(e.getKey()));
+			sb.append("\": \"");
+			sb.append(encodeJavascriptString(e.getValue()));
+			sb.append("\"");
+			delim = ", ";
+		}
+		
+		sb.append("}");
+		return sb.toString();
+	}
+
+	private String encodeJavascriptString(String in) {
+		StringBuilder out = new StringBuilder();
+		
+		for (int i = 0; i < in.length(); i++) {
+			char c = in.charAt(i);
+			
+			if (('0' <= c && c <= '9') || 
+				('a' <= c && c <= 'z') || 
+				('A' <= c && c <= 'Z') ||
+				(c == '/') || (c == '.') || (c == '-'))
+			{
+				out.append(c);
+			} else {
+				// be safe and escape everything else
+				if (c < 0x0010) {
+					out.append("\\u000");
+				} else if (c < 0x0100) {
+					out.append("\\u00");
+				} else if (c < 0x1000) {
+					out.append("\\u0");
+				} else { // c >= 0x1000
+					out.append("\\u");
+				}
+				out.append(Integer.toHexString(c));
+			}
+		}
+		
+		return out.toString();
 	}
 
 	private String parsePageTokens(Map<String, String> pageTokens) {
