@@ -82,7 +82,9 @@ public final class JavaScriptServlet extends HttpServlet {
 	private String xRequestedWith = null;
 
 	@Override
-	public void init(ServletConfig servletConfig) {
+	public void init(ServletConfig servletConfig) throws ServletException {
+		super.init(servletConfig);
+		
 		sourceFile = getInitParameter(servletConfig, "source-file", "WEB-INF/Owasp.CsrfGuard.js");
 		domainStrict = getInitParameter(servletConfig, "domain-strict", "true");
 		cacheControl = getInitParameter(servletConfig, "cache-control", "private, maxage=28800");
