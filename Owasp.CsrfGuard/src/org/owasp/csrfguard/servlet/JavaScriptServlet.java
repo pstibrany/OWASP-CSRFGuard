@@ -90,7 +90,11 @@ public final class JavaScriptServlet extends HttpServlet {
 		injectIntoForms = getInitParameter(servletConfig, "inject-into-forms", "true");
 		injectIntoAttributes = getInitParameter(servletConfig, "inject-into-attributes", "true");
 		xRequestedWith = getInitParameter(servletConfig, "x-requested-with", "OWASP CSRFGuard Project");
-		templateCode = readFileContent(servletConfig.getServletContext(), sourceFile);
+		
+		boolean precacheTemplateCode = Boolean.parseBoolean(getInitParameter(servletConfig, "precache-template", "true"));
+		if (precacheTemplateCode) {
+			templateCode = readFileContent(servletConfig.getServletContext(), sourceFile);
+		}
 	}
 
 	@Override
@@ -158,6 +162,9 @@ public final class JavaScriptServlet extends HttpServlet {
 
 		/** build dynamic javascript **/
 		String code = templateCode;
+		if (code == null) {
+			code = readFileContent(getServletContext(), sourceFile);
+		}
 
 		code = code.replaceAll(TOKEN_NAME_IDENTIFIER, csrfGuard.getTokenName());
 		code = code.replaceAll(TOKEN_VALUE_IDENTIFIER, (String) session.getAttribute(csrfGuard.getSessionKey()));
