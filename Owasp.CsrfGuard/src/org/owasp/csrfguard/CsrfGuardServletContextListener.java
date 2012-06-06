@@ -1,17 +1,13 @@
 package org.owasp.csrfguard;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
+import java.util.*;
+import java.util.concurrent.*;
 
-import java.util.Properties;
+import javax.servlet.*;
 
-import javax.servlet.ServletContext;
-import javax.servlet.ServletContextEvent;
-import javax.servlet.ServletContextListener;
-
-import org.owasp.csrfguard.util.Streams;
+import org.owasp.csrfguard.log.*;
+import org.owasp.csrfguard.util.*;
 
 public class CsrfGuardServletContextListener implements ServletContextListener {
 
@@ -19,34 +15,81 @@ public class CsrfGuardServletContextListener implements ServletContextListener {
 
 	private final static String CONFIG_PRINT_PARAM = "Owasp.CsrfGuard.Config.Print";
 
+	private final static String RELOAD_PROPERTIES = "Owasp.CsrfGuard.ReloadProperties";
+	
 	@Override
 	public void contextInitialized(ServletContextEvent event) {
-		ServletContext context = event.getServletContext();
-		String config = context.getInitParameter(CONFIG_PARAM);
-
+		final ServletContext context = event.getServletContext();
+		final String config = context.getInitParameter(CONFIG_PARAM);
 
 		if (config == null) {
 			throw new RuntimeException(String.format("failure to specify context init-param - %s", CONFIG_PARAM));
 		}
+		
+		Properties initialProperties = loadConfig(context, config);
+		try {
+			CsrfGuard.load(initialProperties);
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
 
+		if (Boolean.parseBoolean(context.getInitParameter(CONFIG_PRINT_PARAM))) {
+			CsrfGuard guard = CsrfGuard.getInstance();
+			guard.getLogger().log(guard.toString());
+		}
+		
+		if (Boolean.parseBoolean(context.getInitParameter(RELOAD_PROPERTIES))) {
+			startConfigReloader(context, config, initialProperties);
+		}
+	}
+
+	private void startConfigReloader(final ServletContext context, final String config, final Properties initialProperties) {
+		Runnable reloader = new Runnable() {
+			@Override
+			public void run() {
+				Properties lastProps = initialProperties;
+				
+				while (true) {
+					try {
+						Thread.sleep(TimeUnit.SECONDS.toMillis(30));
+					} catch (InterruptedException e) {
+						Thread.currentThread().interrupt();
+						return;
+					}
+					
+					Properties newProps = loadConfig(context, config);
+					if (!newProps.equals(lastProps)) {
+						CsrfGuard.getInstance().getLogger().log("CSRFGuard properties has been changed, setting new properties");
+						try {
+							CsrfGuard.load(newProps);
+							CsrfGuard.getInstance().getLogger().log("New CSRFGuard properties has been set");
+						} catch (Exception e) {
+							CsrfGuard.getInstance().getLogger().log(LogLevel.Error, e);
+						}
+					}
+					
+					lastProps = newProps;
+				}
+			}
+		};
+		
+		Thread t = new Thread(reloader);
+		t.setName("CSRFGuard config reloader");
+		t.setDaemon(true);
+		t.start();
+	}
+
+	private Properties loadConfig(ServletContext context, String config) {
 		InputStream is = null;
 		Properties properties = new Properties();
-
 		try {
 			is = getResourceStream(config, context);
 			properties.load(is);
-			CsrfGuard.load(properties);
+			return properties;
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		} finally {
 			Streams.close(is);
-		}
-
-
-		String printConfig = context.getInitParameter(CONFIG_PRINT_PARAM);
-
-		if (printConfig != null && Boolean.parseBoolean(printConfig)) {
-			context.log(CsrfGuard.getInstance().toString());
 		}
 	}
 
