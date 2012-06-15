@@ -435,7 +435,10 @@ public final class CsrfGuard {
 		if (pageTokens.containsKey(uri))
 			return;
 		try {
-			pageTokens.put(uri, RandomGenerator.generateRandomId(getPrng(), getTokenLength()));
+			String token = RandomGenerator.generateRandomId(getPrng(), getTokenLength());
+			pageTokens.put(uri, token);
+			
+			logger.log(LogLevel.Debug, "Created new CSRF token for page " + uri + ": " + token);
 		} catch (Exception e) {
 			throw new RuntimeException(String.format("unable to generate the random token - %s", e.getLocalizedMessage()), e);
 		}
