@@ -42,7 +42,7 @@ public class InterceptRedirectResponse extends HttpServletResponseWrapper {
 		}
 		
 		/** ensure token included in redirects **/
-		if ((csrfGuard.isProtectedPage(path) || csrfGuard.isUnprotectedMethod("GET"))) {
+		if ((csrfGuard.isProtectedPage(path) || !csrfGuard.isProtectedMethod("GET"))) {
 			// Make sure that there is a session
 			request.getSession(true);
 			

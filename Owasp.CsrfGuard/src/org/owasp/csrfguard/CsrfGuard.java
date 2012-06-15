@@ -340,7 +340,7 @@ public final class CsrfGuard {
 	}
 
 	public boolean isValidRequest(HttpServletRequest request, HttpServletResponse response) {
-		boolean valid = isUnprotectedPageOrMethod(request);
+		boolean valid = !isProtectedPageAndMethod(request);
 		HttpSession session = request.getSession(true);
 		String tokenFromSession = (String) session.getAttribute(getSessionKey());
 
@@ -414,7 +414,7 @@ public final class CsrfGuard {
 				}
 
 				/** create token if it does not exist **/
-				if (!isUnprotectedPageOrMethod(request)) {
+				if (isProtectedPageAndMethod(request)) {
 					createPageToken(pageTokens, request.getRequestURI());
 				}
 			}
