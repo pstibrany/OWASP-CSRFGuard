@@ -648,20 +648,30 @@ public final class CsrfGuard {
 		return retval;
 	}
 
-	public boolean isUnprotectedMethod(String method) {
-		boolean retval = false;
-
-		if (!protectedMethods.isEmpty() && !protectedMethods.contains(method)) {
-				retval = true;
+	public boolean isProtectedMethod(String method) {
+		if (protectedMethods.isEmpty()) {
+			// all methods are protected
+			return true;
 		}
+		return protectedMethods.contains(method);
+	}
 
-		return retval;
+	// Deprecated: Don't use negative in method name
+	@Deprecated
+	public boolean isUnprotectedMethod(String method) {
+		return !isProtectedMethod(method);
+	}
+
+	public boolean isProtectedPageAndMethod(HttpServletRequest request) {
+		return isProtectedPage(request.getRequestURI()) && isProtectedMethod(request.getMethod());
 	}
 	
+	// Deprecated: don't use negative in method name
+	@Deprecated
 	public boolean isUnprotectedPageOrMethod(HttpServletRequest request) {
-		return (!isProtectedPage(request.getRequestURI()) || isUnprotectedMethod(request.getMethod()));
+		return !isProtectedPageAndMethod(request);
 	}
-	
+
 	/**
 	 * FIXME: taken from Tomcat - ApplicationFilterFactory
 	 * 
