@@ -40,7 +40,9 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
+import org.owasp.csrfguard.action.*;
 import org.owasp.csrfguard.http.InterceptRedirectResponse;
+import org.owasp.csrfguard.log.*;
 
 public final class CsrfGuardFilter implements Filter {
 
@@ -75,12 +77,27 @@ public final class CsrfGuardFilter implements Filter {
 
 			if (session.isNew() && csrfGuard.isUseNewTokenLandingPage()) {
 				csrfGuard.writeLandingPage(httpRequest, httpResponse);
-			} else if (csrfGuard.isValidRequest(httpRequest, httpResponse)) {
-				filterChain.doFilter(httpRequest, httpResponse);
 			} else {
-				/** invalid request - nothing to do - actions already executed **/
+				try {
+					csrfGuard.checkRequest(httpRequest, httpResponse);
+					
+					filterChain.doFilter(httpRequest, httpResponse);
+				} catch (CsrfGuardException csrfe) {
+					for (IAction action : csrfGuard.getActions()) {
+						try {
+							action.execute(httpRequest, httpResponse, csrfe, csrfGuard);
+						} catch (CsrfGuardException exception) {
+							csrfGuard.getLogger().log(LogLevel.Error, exception);
+						}
+					}
+				}
 			}
 
+			/** rotate session and page tokens **/
+			if (!csrfGuard.isAjaxRequest(httpRequest) && csrfGuard.isRotateEnabled()) {
+				csrfGuard.rotateTokens(httpRequest);
+			}
+			
 			/** update tokens **/
 			csrfGuard.updateTokens(httpRequest);
 

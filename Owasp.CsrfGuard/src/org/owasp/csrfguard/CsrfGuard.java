@@ -339,44 +339,26 @@ public final class CsrfGuard {
 		return tokenValue;
 	}
 
-	public boolean isValidRequest(HttpServletRequest request, HttpServletResponse response) {
-		boolean valid = !isProtectedPageAndMethod(request);
+	public void checkRequest(HttpServletRequest request, HttpServletResponse response) throws CsrfGuardException {
+		if (!isProtectedPageAndMethod(request)) {
+			return;
+		}
+		
 		HttpSession session = request.getSession(true);
 		String tokenFromSession = (String) session.getAttribute(getSessionKey());
 
 		/** sending request to protected resource - verify token **/
-		if (tokenFromSession != null && !valid) {
-			try {
-				if (isAjaxEnabled() && isAjaxRequest(request)) {
-					verifyAjaxToken(request);
-				} else if (isTokenPerPageEnabled()) {
-					verifyPageToken(request);
-				} else {
-					verifySessionToken(request);
-				}
-				valid = true;
-			} catch (CsrfGuardException csrfe) {
-				for (IAction action : getActions()) {
-					try {
-						action.execute(request, response, csrfe, this);
-					} catch (CsrfGuardException exception) {
-						getLogger().log(LogLevel.Error, exception);
-					}
-				}
-			}
-
-			/** rotate session and page tokens **/
-			if (!isAjaxRequest(request) && isRotateEnabled()) {
-				rotateTokens(request);
-			}
-			/** expected token in session - bad state **/
-		} else if (tokenFromSession == null) {
+		if (tokenFromSession == null) {
 			throw new IllegalStateException("CsrfGuard expects the token to exist in session at this point");
-		} else {
-			/** unprotected page - nothing to do **/
 		}
-
-		return valid;
+		
+		if (isAjaxEnabled() && isAjaxRequest(request)) {
+			verifyAjaxToken(request);
+		} else if (isTokenPerPageEnabled()) {
+			verifyPageToken(request);
+		} else {
+			verifySessionToken(request);
+		}
 	}
 
 	public void updateToken(HttpSession session) {
@@ -544,7 +526,7 @@ public final class CsrfGuard {
 		return sb.toString();
 	}
 
-	private boolean isAjaxRequest(HttpServletRequest request) {
+	boolean isAjaxRequest(HttpServletRequest request) {
 		return request.getHeader("X-Requested-With") != null;
 	}
 
@@ -599,7 +581,7 @@ public final class CsrfGuard {
 		}
 	}
 
-	private void rotateTokens(HttpServletRequest request) {
+	void rotateTokens(HttpServletRequest request) {
 		HttpSession session = request.getSession(true);
 
 		/** rotate master token **/
