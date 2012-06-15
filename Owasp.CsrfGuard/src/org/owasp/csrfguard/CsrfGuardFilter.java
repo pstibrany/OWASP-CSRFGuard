@@ -28,20 +28,13 @@
  */
 package org.owasp.csrfguard;
 
-import java.io.IOException;
+import java.io.*;
 
-import javax.servlet.Filter;
-import javax.servlet.FilterChain;
-import javax.servlet.FilterConfig;
-import javax.servlet.ServletException;
-import javax.servlet.ServletRequest;
-import javax.servlet.ServletResponse;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
+import javax.servlet.*;
+import javax.servlet.http.*;
 
 import org.owasp.csrfguard.action.*;
-import org.owasp.csrfguard.http.InterceptRedirectResponse;
+import org.owasp.csrfguard.http.*;
 import org.owasp.csrfguard.log.*;
 
 public final class CsrfGuardFilter implements Filter {
@@ -85,7 +78,11 @@ public final class CsrfGuardFilter implements Filter {
 				} catch (CsrfGuardException csrfe) {
 					for (IAction action : csrfGuard.getActions()) {
 						try {
-							action.execute(httpRequest, httpResponse, csrfe, csrfGuard);
+							if (action instanceof IAction2) {
+								((IAction2) action).execute(httpRequest, httpResponse, csrfe, csrfGuard, filterChain);
+							} else {
+								action.execute(httpRequest, httpResponse, csrfe, csrfGuard);
+							}
 						} catch (CsrfGuardException exception) {
 							csrfGuard.getLogger().log(LogLevel.Error, exception);
 						}
